@@ -1,0 +1,14 @@
+# data only container pattern
+data:
+  image: muccg/debian8-base:latest
+  volumes:
+    - data/dev:/data
+
+createrepo:
+  build: .
+  #command: initrepos
+  command: recoverrepos
+  #command: updaterepo ccg 6 x86_64
+  #command: uploadrepo ccg
+  volumes_from:
+    - data

@@ -1,0 +1,12 @@
+repo/ccg/centos/5/os/noarch
+repo/ccg/centos/5/os/x86_64
+repo/ccg/centos/6/os/noarch
+repo/ccg/centos/6/os/x86_64
+repo/ccg/centos/5_testing/os/noarch
+repo/ccg/centos/5_testing/os/x86_64
+repo/ccg/centos/6_testing/os/noarch
+repo/ccg/centos/6_testing/os/x86_64
+repo/ccg-deps/centos/5/os/noarch
+repo/ccg-deps/centos/5/os/x86_64
+repo/ccg-deps/centos/6/os/noarch
+repo/ccg-deps/centos/6/os/x86_64
