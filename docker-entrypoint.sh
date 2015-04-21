@@ -1,9 +1,12 @@
 #!/bin/bash
 
+set -e
 
 function defaults {
     : ${SYNC_DEST="s3://repo.ccgapps.com.au"}
-    : ${SYNC_CREATED_SENTINEL="/data/.created"}
+    : ${SYNC_REPOS_FILE="/repos.txt"}
+    : ${SYNC_LOCAL_REPO_PREFIX="/data"}
+    : ${SYNC_CREATED_SENTINEL="${SYNC_LOCAL_REPO_PREFIX}/.created"}
 
     if ! [[ -z "$SYNC_FORCE" ]] ; then
         echo "Sync is forced"
@@ -17,127 +20,155 @@ function defaults {
         SYNC_DELETE="--delete"
     fi
 
+    if [[ -z "$SYNC_DRYRUN" ]] ; then
+        SYNC_DRYRUN=""
+    else
+        echo "Sync will be a dry run"
+        SYNC_DRYRUN="--dryrun"
+    fi
+
     echo "SYNC_DEST is ${SYNC_DEST}"
 
-    export SYNC_DEST SYNC_DELETE
+    export SYNC_DEST SYNC_DELETE SYNC_REPOS_FILE SYNC_LOCAL_REPO_PREFIX SYNC_DRYRUN
 }
 
 
-function initrepos {
-    if [[ -f "${SYNC_CREATED_SENTINEL}" ]]; then
-        echo "Repos already created"
-        exit 0
-    fi
-
-    while read repo
-    do
-        echo "init /data/${repo}"
-        mkdir -p /data/${repo}/CentOS/RPMS
-        lockfile /data/${repo}/lock
-        time createrepo -s sha /data/${repo}
-        rm -f /data/${repo}/lock
-    done < /repos.txt
-
-    touch ${SYNC_CREATED_SENTINEL}
-}
-
-
-# update all repos
-function updaterepos {
-    while read repo
-    do
-        updaterepopath "/data/${repo}"
-    done < /repos.txt
-}
-
-
-# update a repo give REPO, RELEASE, ARCH
-function updaterepo {
-    # ccg
-    # ccg-deps
-    REPO=$1
-    RELEASE=$2
-    ARCH=$3
-
-    REPO_PATH="/data/repo/${REPO}/centos/${RELEASE}/os/${ARCH}"
-
-    updaterepopath ${REPO_PATH}
-}
-
-
-# update a repo given path
-function updaterepopath {
+function lock {
     REPO_PATH=$1
-
-    if ! [[ -d "${REPO_PATH}" ]]; then
-        echo "No repo ${REPO_PATH} found"
-        exit 1
-    fi
-
-    echo "Updating ${REPO_PATH}"
-
     LOCKFILE="${REPO_PATH}/lock"
     echo "Getting lock on ${LOCKFILE}"
     lockfile ${LOCKFILE}
+}
 
-    echo "Lock acquired, updating repo"
-    rm -rf "${REPO_PATH}/repodata/"
-    time createrepo --update -s sha "${REPO_PATH}"
-    STATUS=$?
 
+function unlock {
+    REPO_PATH=$1
+    LOCKFILE="${REPO_PATH}/lock"
     echo "Removing ${LOCKFILE}."
     rm -f ${LOCKFILE}
 }
 
 
-function uploadrepo {
-    #ccg-deps/
-    #ccg/
-    REPO=$1
-
-    if [[ -z "${REPO}" ]]; then
-        echo "No repo provided $0 REPO"
-      exit 1
-    fi
-
-    # upload everything, including new indexes
-    time aws s3 sync \
-        --dryrun \
-        ${SYNC_DELETE} \
-        --exclude "*.sh" \
-        --exclude "*.txt" \
-        --exclude ".created" \
-        --exclude "lock" \
-        /data/repo/${REPO}/ ${SYNC_DEST}/repo/${REPO}
-}
-
-function recoverrepos {
+function initallrepos {
     if [[ -f "${SYNC_CREATED_SENTINEL}" ]]; then
         echo "Repos already created"
-        exit 0
+        exit 1
     fi
 
     while read repo
     do
-        echo "Recover /data/${repo}"
-        mkdir -p /data/${repo}/CentOS/RPMS
-
-        LOCKFILE="/data/${repo}/lock"
-        echo "Getting lock on ${LOCKFILE}"
-        lockfile ${LOCKFILE}
-
-        echo "Lock acquired, recovering repo"
-        time aws s3 sync \
-            ${SYNC_DEST}/${repo} /data/${repo} \
-            ${SYNC_DELETE} \
-            --exclude "*" \
-            --include "*.rpm"
-
-        echo "Removing ${LOCKFILE}."
-        rm -f ${LOCKFILE}
-    done < /repos.txt
+        initrepo ${repo}
+    done < ${SYNC_REPOS_FILE}
 
     touch ${SYNC_CREATED_SENTINEL}
+}
+
+
+function initrepo {
+    REPO=${1}
+    LOCAL_REPO_PATH="${SYNC_LOCAL_REPO_PREFIX}/${REPO}"
+
+    lock ${LOCAL_REPO_PATH}
+
+    echo "init ${REPO}"
+    mkdir -p ${LOCAL_REPO_PATH}
+    time createrepo -s sha ${LOCAL_REPO_PATH}
+
+    unlock ${LOCAL_REPO_PATH}
+}
+
+
+function updateallrepos {
+    while read repo
+    do
+        updaterepo ${repo}
+    done < ${SYNC_REPOS_FILE}
+}
+
+
+function updaterepo {
+    REPO=${1}
+    LOCAL_REPO_PATH="${SYNC_LOCAL_REPO_PREFIX}/${REPO}"
+
+    if ! [[ -d "${LOCAL_REPO_PATH}" ]]; then
+        echo "No repo ${LOCAL_REPO_PATH} found"
+        exit 1
+    fi
+
+    echo "Updating ${REPO}"
+
+    lock ${LOCAL_REPO_PATH}
+
+    echo "Lock acquired, updating repo"
+    find ${LOCAL_REPO_PATH} -name repodata | xargs -n 1 rm -rf
+    time createrepo --update -s sha "${LOCAL_REPO_PATH}"
+
+    unlock ${LOCAL_REPO_PATH}
+}
+
+
+function uploadallrepos {
+    while read repo
+    do
+        uploadrepo ${repo}
+    done < ${SYNC_REPOS_FILE}
+}
+
+
+function uploadrepo {
+    REPO=${1}
+    LOCAL_REPO_PATH="${SYNC_LOCAL_REPO_PREFIX}/${REPO}"
+
+    lock ${LOCAL_REPO_PATH}
+
+    echo "Uploading ${LOCAL_REPO_PATH} to ${SYNC_DEST}"
+    time aws s3 sync \
+        ${LOCAL_REPO_PATH}/ ${SYNC_DEST}/${REPO} \
+        ${SYNC_DELETE} \
+        ${SYNC_DRYRUN} \
+        --exclude "*.sh" \
+        --exclude "*.txt" \
+        --exclude ".created" \
+        --exclude "lock" \
+
+    unlock ${LOCAL_REPO_PATH}
+}
+
+
+function downloadallrepos {
+    if [[ -f "${SYNC_CREATED_SENTINEL}" ]]; then
+        echo "Repos already created"
+        exit 1
+    fi
+
+    while read repo
+    do
+        downloadrepo $repo
+    done < ${SYNC_REPOS_FILE}
+
+    touch ${SYNC_CREATED_SENTINEL}
+}
+
+
+# download only RPMs
+function downloadrepo {
+    REPO=$1
+    LOCAL_REPO_PATH="${SYNC_LOCAL_REPO_PREFIX}/${REPO}"
+
+    echo "Download ${LOCAL_REPO_PATH}"
+    mkdir -p ${LOCAL_REPO_PATH}
+
+    lock ${LOCAL_REPO_PATH}
+
+    echo "Lock acquired, downloading repo"
+    time aws s3 sync \
+        ${SYNC_DEST}/${REPO} ${LOCAL_REPO_PATH} \
+        ${SYNC_DELETE} \
+        ${SYNC_DRYRUN} \
+        --exclude "*" \
+        --include "*.rpm"
+
+    unlock ${LOCAL_REPO_PATH}
 }
 
 
@@ -146,21 +177,33 @@ echo "WHOAMI is `whoami`"
 
 defaults
 
-if [ "$1" = 'updaterepo' ]; then
-    echo "[Run] Update repo"
-    updaterepo $2 $3 $4
-    exit ${STATUS}
-fi
-
-if [ "$1" = 'initrepos' ]; then
-    echo "[Run] Init repos"
-    initrepos
+if [ "$1" = 'initallrepos' ]; then
+    echo "[Run] Init all repos"
+    initallrepos
     exit 0
 fi
 
-if [ "$1" = 'recoverrepos' ]; then
-    echo "[Run] Recover repos"
-    recoverrepos
+if [ "$1" = 'initrepo' ]; then
+    echo "[Run] Init repo"
+    initrepo $2
+    exit 0
+fi
+
+if [ "$1" = 'downloadallrepos' ]; then
+    echo "[Run] Download all repos"
+    downloadallrepos
+    exit 0
+fi
+
+if [ "$1" = 'downloadrepo' ]; then
+    echo "[Run] Download repo"
+    downloadrepo $2
+    exit 0
+fi
+
+if [ "$1" = 'uploadallrepos' ]; then
+    echo "[Run] Upload all repos"
+    uploadallrepos
     exit 0
 fi
 
@@ -170,13 +213,19 @@ if [ "$1" = 'uploadrepo' ]; then
     exit 0
 fi
 
-if [ "$1" = 'updaterepos' ]; then
+if [ "$1" = 'updateallrepos' ]; then
     echo "[Run] Update all repos"
-    updaterepos
+    updateallrepos
     exit 0
 fi
 
-echo "[RUN]: Builtin command not provided [updaterepo|updaterepos|initrepos|recoverrepos|uploadrepo]"
+if [ "$1" = 'updaterepo' ]; then
+    echo "[Run] Update repo"
+    updaterepo $2
+    exit 0
+fi
+
+echo "[RUN]: Builtin command not provided [updaterepo|updateallrepos|initrepo|initallrepos|downloadrepo|downloadallrepos|uploadrepo|uploadallrepos]"
 echo "[RUN]: $@"
 
 exec "$@"

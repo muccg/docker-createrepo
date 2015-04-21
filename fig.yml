@@ -7,12 +7,14 @@ data:
 createrepo:
   build: .
   #command: initrepos
-  #command: recoverrepos
-  #command: updaterepo ccg 6 x86_64
-  command: updaterepos
-  #command: uploadrepo ccg
+  #command: downloadallrepos
+  #command: updaterepo xxx
+  #command: updateallrepos
+  command: uploadallrepos
+  #command: uploadrepo xxx
   environment:
     - SYNC_DELETE=1
     - SYNC_FORCE=1
+    - SYNC_DRYRUN=1
   volumes_from:
     - data
