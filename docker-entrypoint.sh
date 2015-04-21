@@ -3,10 +3,17 @@
 
 function defaults {
     : ${SYNC_DEST="s3://repo.ccgapps.com.au"}
+    : ${SYNC_CREATED_SENTINEL="/data/.created"}
+
+    if ! [[ -z "$SYNC_FORCE" ]] ; then
+        echo "Sync is forced"
+        rm -f ${SYNC_CREATED_SENTINEL}
+    fi
 
     if [[ -z "$SYNC_DELETE" ]] ; then
         SYNC_DELETE=""
     else
+        echo "Sync will delete at destination"
         SYNC_DELETE="--delete"
     fi
 
@@ -17,7 +24,7 @@ function defaults {
 
 
 function initrepos {
-    if [[ -f "/data/.created" ]]; then
+    if [[ -f "${SYNC_CREATED_SENTINEL}" ]]; then
         echo "Repos already created"
         exit 0
     fi
@@ -31,7 +38,7 @@ function initrepos {
         rm -f /data/${repo}/lock
     done < /repos.txt
 
-    touch /data/.created
+    touch ${SYNC_CREATED_SENTINEL}
 }
 
 
@@ -86,7 +93,7 @@ function uploadrepo {
 }
 
 function recoverrepos {
-    if [[ -f "/data/.created" ]]; then
+    if [[ -f "${SYNC_CREATED_SENTINEL}" ]]; then
         echo "Repos already created"
         exit 0
     fi
@@ -111,7 +118,7 @@ function recoverrepos {
         rm -f ${LOCKFILE}
     done < /repos.txt
 
-    touch /data/.created
+    touch ${SYNC_CREATED_SENTINEL}
 }
 
 
