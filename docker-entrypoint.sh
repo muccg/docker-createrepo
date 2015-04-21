@@ -2,7 +2,7 @@
 
 
 function defaults {
-    : ${S3DEST="s3://repo.ccgapps.com.au"}
+    : ${SYNC_DEST="s3://repo.ccgapps.com.au"}
 
     if [[ -z "$SYNC_DELETE" ]] ; then
         SYNC_DELETE=""
@@ -10,9 +10,9 @@ function defaults {
         SYNC_DELETE="--delete"
     fi
 
-    echo "S3DEST is ${S3DEST}"
+    echo "SYNC_DEST is ${SYNC_DEST}"
 
-    export S3DEST SYNC_DELETE
+    export SYNC_DEST SYNC_DELETE
 }
 
 
@@ -82,7 +82,7 @@ function uploadrepo {
         --exclude "*.txt" \
         --exclude ".created" \
         --exclude "lock" \
-        /data/repo/${REPO}/ ${S3DEST}/repo/${REPO}
+        /data/repo/${REPO}/ ${SYNC_DEST}/repo/${REPO}
 }
 
 function recoverrepos {
@@ -102,7 +102,7 @@ function recoverrepos {
 
         echo "Lock acquired, recovering repo"
         time aws s3 sync \
-            ${S3DEST}/${repo} /data/${repo} \
+            ${SYNC_DEST}/${repo} /data/${repo} \
             ${SYNC_DELETE} \
             --exclude "*" \
             --include "*.rpm"
