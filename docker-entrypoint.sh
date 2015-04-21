@@ -42,6 +42,16 @@ function initrepos {
 }
 
 
+# update all repos
+function updaterepos {
+    while read repo
+    do
+        updaterepopath "/data/${repo}"
+    done < /repos.txt
+}
+
+
+# update a repo give REPO, RELEASE, ARCH
 function updaterepo {
     # ccg
     # ccg-deps
@@ -50,6 +60,14 @@ function updaterepo {
     ARCH=$3
 
     REPO_PATH="/data/repo/${REPO}/centos/${RELEASE}/os/${ARCH}"
+
+    updaterepopath ${REPO_PATH}
+}
+
+
+# update a repo given path
+function updaterepopath {
+    REPO_PATH=$1
 
     if ! [[ -d "${REPO_PATH}" ]]; then
         echo "No repo ${REPO_PATH} found"
@@ -63,6 +81,7 @@ function updaterepo {
     lockfile ${LOCKFILE}
 
     echo "Lock acquired, updating repo"
+    rm -rf "${REPO_PATH}/repodata/"
     time createrepo --update -s sha "${REPO_PATH}"
     STATUS=$?
 
@@ -151,7 +170,13 @@ if [ "$1" = 'uploadrepo' ]; then
     exit 0
 fi
 
-echo "[RUN]: Builtin command not provided [updaterepo|initrepos|recoverrepos|uploadrepo]"
+if [ "$1" = 'updaterepos' ]; then
+    echo "[Run] Update all repos"
+    updaterepos
+    exit 0
+fi
+
+echo "[RUN]: Builtin command not provided [updaterepo|updaterepos|initrepos|recoverrepos|uploadrepo]"
 echo "[RUN]: $@"
 
 exec "$@"

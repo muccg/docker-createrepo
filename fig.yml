@@ -7,8 +7,9 @@ data:
 createrepo:
   build: .
   #command: initrepos
-  command: recoverrepos
+  #command: recoverrepos
   #command: updaterepo ccg 6 x86_64
+  command: updaterepos
   #command: uploadrepo ccg
   environment:
     - SYNC_DELETE=1
