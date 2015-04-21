@@ -38,6 +38,7 @@ function lock {
     LOCKFILE="${REPO_PATH}/lock"
     echo "Getting lock on ${LOCKFILE}"
     lockfile ${LOCKFILE}
+    trap 'unlock ${REPO_PATH=}' EXIT SIGINT SIGTERM SIGHUP
 }
 
 
@@ -46,6 +47,7 @@ function unlock {
     LOCKFILE="${REPO_PATH}/lock"
     echo "Removing ${LOCKFILE}."
     rm -f ${LOCKFILE}
+    trap - EXIT
 }
 
 

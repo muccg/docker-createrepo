@@ -7,10 +7,10 @@ data:
 createrepo:
   build: .
   #command: initrepos
-  #command: downloadallrepos
+  command: downloadallrepos
   #command: updaterepo xxx
   #command: updateallrepos
-  command: uploadallrepos
+  #command: uploadallrepos
   #command: uploadrepo xxx
   environment:
     - SYNC_DELETE=1
