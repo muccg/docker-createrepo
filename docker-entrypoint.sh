@@ -71,10 +71,10 @@ function uploadrepo {
     # upload everything, including new indexes
     aws s3 sync \
         --dryrun \
-        --exclude \"*.sh\" \
-        --exclude \"*.txt\" \
-        --exclude \".created\" \
-        --exclude \"lock\" \
+        --exclude "*.sh" \
+        --exclude "*.txt" \
+        --exclude ".created" \
+        --exclude "lock" \
         /data/repo/${REPO}/ ${S3DEST}/repo/${REPO}
 }
 
@@ -94,10 +94,10 @@ function recoverrepos {
         lockfile ${LOCKFILE}
 
         echo "Lock acquired, recovering repo"
-        aws s3 sync \
-            --exclude \"*\" \
-            --include \"*.rpm\" \
-            ${S3DEST}/${repo} /data/${repo}
+        time aws s3 sync \
+            ${S3DEST}/${repo} /data/${repo} \
+            --exclude "*" \
+            --include "*.rpm"
 
         echo "Removing ${LOCKFILE}."
         rm -f ${LOCKFILE}
