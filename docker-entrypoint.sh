@@ -71,8 +71,10 @@ function uploadrepo {
     # upload everything, including new indexes
     aws s3 sync \
         --dryrun \
-        --exclude \"*.sh\" --exclude \"*.txt\" \
+        --exclude \"*.sh\" \
+        --exclude \"*.txt\" \
         --exclude \".created\" \
+        --exclude \"lock\" \
         /data/repo/${REPO}/ ${S3DEST}/repo/${REPO}
 }
 
