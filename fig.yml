@@ -10,5 +10,8 @@ createrepo:
   command: recoverrepos
   #command: updaterepo ccg 6 x86_64
   #command: uploadrepo ccg
+  environment:
+    - SYNC_DELETE=1
+    - SYNC_FORCE=1
   volumes_from:
     - data
