@@ -88,14 +88,19 @@ function recoverrepos {
     do
         echo "Recover /data/${repo}"
         mkdir -p /data/${repo}/CentOS/RPMS
-        lockfile /data/${repo}/lock
 
+        LOCKFILE="/data/${repo}/lock"
+        echo "Getting lock on ${LOCKFILE}"
+        lockfile ${LOCKFILE}
+
+        echo "Lock acquired, recovering repo"
         aws s3 sync \
             --exclude \"*\" \
             --include \"*.rpm\" \
             ${S3DEST}/${repo} /data/${repo}
 
-        rm -f /data/${repo}/lock
+        echo "Removing ${LOCKFILE}."
+        rm -f ${LOCKFILE}
     done < /repos.txt
 
     touch /data/.created
