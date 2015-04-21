@@ -101,7 +101,7 @@ function uploadrepo {
     fi
 
     # upload everything, including new indexes
-    aws s3 sync \
+    time aws s3 sync \
         --dryrun \
         ${SYNC_DELETE} \
         --exclude "*.sh" \
