@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 function defaults {
     : ${SYNC_DEST="s3://repo.ccgapps.com.au"}
