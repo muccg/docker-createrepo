@@ -5,7 +5,7 @@ set -e
 function defaults {
     : ${SYNC_DEST="s3://repo.ccgapps.com.au"}
     : ${SYNC_REPOS_FILE="/repos.txt"}
-    : ${SYNC_LOCAL_REPO_PREFIX="/data"}
+    : ${SYNC_LOCAL_REPO_PREFIX="/data/createrepo"}
     : ${SYNC_CREATED_SENTINEL="${SYNC_LOCAL_REPO_PREFIX}/.created"}
 
     if ! [[ -z "$SYNC_FORCE" ]] ; then
