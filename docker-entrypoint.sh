@@ -227,7 +227,13 @@ if [ "$1" = 'updaterepo' ]; then
     exit 0
 fi
 
-echo "[RUN]: Builtin command not provided [updaterepo|updateallrepos|initrepo|initallrepos|downloadrepo|downloadallrepos|uploadrepo|uploadallrepos]"
+if [ "$1" = 'listrepos' ]; then
+    echo "[Run] List repos"
+    cat ${SYNC_REPOS_FILE}
+    exit 0
+fi
+
+echo "[RUN]: Builtin command not provided [updaterepo|updateallrepos|initrepo|initallrepos|downloadrepo|downloadallrepos|uploadrepo|uploadallrepos|listrepos]"
 echo "[RUN]: $@"
 
 exec "$@"
