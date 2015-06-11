@@ -1,6 +1,6 @@
 #
 FROM muccg/rpmbuild:centos6
-MAINTAINER ccg <devops@ccg.murdoch.edu.au>
+MAINTAINER https://github.com/muccg
 
 RUN yum install -y \
     procmail \
